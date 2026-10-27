@@ -316,6 +316,7 @@ button{font:inherit;color:inherit}
 .prog{height:3px;background:var(--line)}
 .prog i{display:block;height:100%;width:0;background:var(--acc);box-shadow:0 0 12px var(--acc-glow);transition:width .6s cubic-bezier(.2,.8,.2,1)}
 .vp{overflow:hidden;position:relative;transition:height .55s cubic-bezier(.2,.8,.2,1);touch-action:pan-y}
+@media (max-width:760px){.vp{transition:none}}
 .track{display:flex;align-items:flex-start;transition:transform .65s cubic-bezier(.2,.8,.2,1);will-change:transform}
 .slide{flex:0 0 100%;min-width:0;padding:clamp(18px,3vw,34px)}
 .slide .post-grid{align-items:start}
@@ -913,14 +914,17 @@ function renderOpts(p){
   const o=sel(p.id);
   document.getElementById("pk-"+p.id).innerHTML=`<span>Monté : <b>${o.name}</b></span><span class="mono">${o.price?"+ "+fmt(o.price):"inclus"}</span>`;
 }
-function fitVp(){ const s=track.children[nav.cur]; if(s) vp.style.height=s.offsetHeight+"px"; }
+function fitVp(){ const kids=[...track.children]; if(!kids.length) return; let h;
+  if(innerWidth<=760){ h=Math.max(...kids.map(k=>k.offsetHeight)); } else { const s=kids[nav.cur]; h=s?s.offsetHeight:0; }
+  if(Math.abs(vp.offsetHeight-h)>1) vp.style.height=h+"px"; }
+addEventListener("resize",()=>fitVp());
 function go(i,scroll=true){
   i=Math.max(0,Math.min(STEPS.length-1,i)); if(i>nav.max+1) return;
   nav.cur=i; nav.max=Math.max(nav.max,i); saveNav();
   track.style.transform=`translateX(${-i*100}%)`;
   [...track.children].forEach((s,j)=>{ const on=j===i; s.classList.toggle("cur",on); s.inert=!on; s.setAttribute("aria-hidden",String(!on)); });
   fitVp(); renderSteps(); updateNav();
-  if(scroll){ const d=document.getElementById("deck"), r=d.getBoundingClientRect(); if(r.top<0||r.top>innerHeight*.4) d.scrollIntoView({behavior:"smooth",block:"start"}); }
+  if(scroll){ const d=document.getElementById("deck"), r=d.getBoundingClientRect(); if(r.bottom<innerHeight*.3||r.top>innerHeight*.7) d.scrollIntoView({behavior:"smooth",block:"start"}); }
 }
 function renderSteps(){
   const el=document.getElementById("steps");
