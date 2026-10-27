@@ -321,6 +321,18 @@ button{font:inherit;color:inherit}
 @keyframes nudge{50%{transform:translateX(5px)}}
 .sp-h{cursor:default}
 @media (max-width:760px){.sp-c{flex-basis:30%}.sp-c .stp button{width:30px;height:30px}}
+.qv{position:absolute;z-index:8;width:min(330px,calc(100% - 24px));display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;padding:12px;border-radius:18px;background:rgba(13,15,20,.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--acc);box-shadow:0 24px 60px -20px rgba(0,0,0,.8),0 0 0 4px var(--acc-soft);animation:qvin .3s cubic-bezier(.2,.8,.2,1)}
+@keyframes qvin{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+.qv-ph{width:96px;height:96px}
+.stage:has(.qv) .hs-tip{opacity:0!important}
+.qv-b{display:flex;flex-direction:column;gap:3px;min-width:0}
+.qv-b b{font-size:15px;line-height:1.25}
+.qv-m{font-size:12.5px;color:var(--muted)}
+.qv-p{font-size:14px;color:var(--acc);margin-top:2px}
+.qv-e{align-self:flex-start;margin-top:6px;border:1px solid var(--line2);background:transparent;border-radius:999px;padding:6px 12px;font-size:12.5px;cursor:pointer}
+.qv-e:hover{border-color:var(--acc);color:var(--acc)}
+.qv-x{position:absolute;top:6px;right:8px;width:28px;height:28px;border:0;background:transparent;color:var(--muted);font-size:20px;cursor:pointer}
+@media (max-width:640px){.qv{left:12px!important;right:12px!important;top:auto!important;bottom:12px!important;width:auto;grid-template-columns:78px minmax(0,1fr)}.qv-ph{width:78px;height:78px}.qv-m{display:none}}
 /* ---------- deck de prépa ---------- */
 .deck{border:1px solid var(--line2);border-radius:28px;background:linear-gradient(180deg,var(--bg2),var(--bg));box-shadow:0 50px 120px -60px var(--acc-glow);overflow:hidden;overflow:clip;outline:none}
 .deck-top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:rgba(13,15,20,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
@@ -526,7 +538,7 @@ footer p{max-width:80ch;margin:0 0 8px}
 </div></section>
 
 <section class="sec g" id="fiche"><div class="in">
-  <div class="sec-h"><div><div class="kick"><b>Fin</b> · Compte-rendu</div><h2>Ta préparation</h2></div><p>Tout ce que tu as choisi. Touche une pièce pour la modifier.</p></div>
+  <div class="sec-h"><div><div class="kick"><b>Fin</b> · Compte-rendu</div><h2>Ta préparation</h2></div><p>Tout ce que tu as choisi. Touche un point sur le châssis pour revoir la pièce montée à cet endroit.</p></div>
   <div class="lock" id="recapLock"></div>
   <div id="recap" hidden>
     <div class="sheet">
@@ -992,7 +1004,22 @@ const RVIEWS=[
  {img:"rear",label:"Train arrière",hs:{supports:[49,44],amortos:[42,52],triangles:[72,70],fusees:[25,55]}},
  {img:"car",label:"Roue avant",hs:{pneus:[64,60],jantes:[51,65],hexa:[56,73]}}
 ];
-let rview=0;
+let rview=0, qvOpen=null;
+function closeQV(){ const q=document.getElementById("qv"); if(q) q.remove(); document.querySelectorAll("#stage .hs.lit").forEach(h=>h.classList.remove("lit")); qvOpen=null; }
+function quickView(pid,x,y){ const st=document.getElementById("stage"); closeQV(); qvOpen=pid;
+  const p=P(pid), o=sel(pid), i=STEPS.indexOf(p);
+  st.querySelector(`.hs[data-post="${pid}"]`)?.classList.add("lit");
+  const q=document.createElement("div"); q.id="qv"; q.className="qv"; q.setAttribute("role","dialog"); q.setAttribute("aria-label",p.title);
+  const right=x>55, low=y>55;
+  q.style.left=right?"auto":`calc(${x}% + 22px)`; q.style.right=right?`calc(${100-x}% + 22px)`:"auto";
+  q.style.top=low?"auto":`calc(${y}% - 20px)`; q.style.bottom=low?`calc(${100-y}% - 20px)`:"auto";
+  q.innerHTML=`<button class="qv-x" type="button" aria-label="Fermer">×</button><span class="thumb qv-ph">${photo(o)}</span><div class="qv-b"><span class="kick">Étape ${String(i+2).padStart(2,"0")} · ${p.title}</span><b>${o.name}</b><span class="qv-m">${o.meta}</span><span class="o-ref"><span>${o.ref}</span>${TAG[o.st]}</span><span class="qv-p mono">${o.price?"+ "+fmt(o.price):"Origine, inclus"}</span><button class="qv-e" type="button">Modifier cette pièce</button></div>`;
+  q.addEventListener("click",e=>e.stopPropagation());
+  q.querySelector(".qv-x").onclick=closeQV; q.querySelector(".qv-e").onclick=()=>{ closeQV(); editStep(i); };
+  st.appendChild(q);
+}
+document.addEventListener("click",e=>{ if(!e.target.closest("#qv,.hs,#sumGrid,#vtabs")) closeQV(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeQV(); });
 function editStep(i){ if(i<0){ document.getElementById("carrosserie").scrollIntoView({behavior:"smooth",block:"start"}); return; } go(i,false); document.getElementById("deck").scrollIntoView({behavior:"smooth",block:"start"}); }
 function renderRecap(){
   const lock=document.getElementById("recapLock"), rc=document.getElementById("recap");
@@ -1001,7 +1028,7 @@ function renderRecap(){
   // visualiseur multi-vues
   const vt=document.getElementById("vtabs");
   vt.innerHTML=RVIEWS.map((v,j)=>`<button type="button" role="tab" aria-selected="${j===rview}" data-j="${j}">${v.label}<span>${Object.keys(v.hs).length}</span></button>`).join("");
-  vt.querySelectorAll("button").forEach(b=>b.onclick=()=>{ rview=+b.dataset.j; renderRecap(); });
+  vt.querySelectorAll("button").forEach(b=>b.onclick=()=>{ rview=+b.dataset.j; qvOpen=null; renderRecap(); });
   const V=RVIEWS[rview], st=document.getElementById("stage"), im=document.getElementById("stageImg");
   im.src=V.img==="car"?(carURL||IMG.car):IMG[V.img]; im.alt=`Vue ${V.label.toLowerCase()} du Pirate Shooter II avec tes pièces repérées`;
   st.querySelectorAll(".hs").forEach(n=>n.remove());
@@ -1009,12 +1036,13 @@ function renderRecap(){
     const b=document.createElement("button"); b.className="hs"+(up?" up":""); b.type="button"; b.style.left=x+"%"; b.style.top=y+"%";
     b.style.setProperty("--m", up?(o.m?MCOL[o.m]:"var(--acc)"):"#2a2e38"); b.setAttribute("aria-label",`${p.title} : ${o.name}. Modifier`);
     b.innerHTML=`<span class="hs-tip" style="${x>68?'left:auto;right:0;transform:none':x<22?'left:0;transform:none':''};${y<22?'bottom:auto;top:calc(100% + 6px)':''}"><span class="hs-ph">${photo(o)}</span><span><b>${p.title}</b>${o.name}<br><span class="mono" style="color:var(--acc)">${o.price?"+ "+fmt(o.price):"origine"}</span></span></span>`;
-    b.onclick=()=>editStep(i); st.appendChild(b); });
+    b.dataset.post=pid; b.onclick=e=>{ e.stopPropagation(); quickView(pid,x,y); }; st.appendChild(b); });
+  if(qvOpen&&V.hs[qvOpen]) quickView(qvOpen,...V.hs[qvOpen]); else closeQV();
   // cartes
   const cards=[{sw:1,i:-1,k:"Carrosserie",b:paint().name,th:swatchSvg(paint().hex),p:paint().price,ref:paint().ref,up:!!paint().price}]
     .concat(POSTS.map(p=>{ const o=sel(p.id); return {i:STEPS.indexOf(p),k:p.title,b:o.name,th:photo(o),p:o.price,ref:o.ref,up:cfg[p.id]!==p.opts[0].id}; }));
   document.getElementById("sumGrid").innerHTML=cards.map(c=>`<button class="sc ${c.up?'up':''}" type="button" data-i="${c.i}" aria-label="${c.k} : ${c.b}. Modifier"><span class="thumb ${c.sw?'sw-th':''}">${c.th}</span><span style="min-width:0"><span class="k">${String(c.i+2).padStart(2,"0")} · ${c.k}</span><b>${c.b}</b><span class="pr ${c.p?'':'inc'}">${c.p?"+ "+fmt(c.p):"Origine, inclus"}</span></span></button>`).join("");
-  document.querySelectorAll("#sumGrid .sc").forEach(b=>b.onclick=()=>editStep(+b.dataset.i));
+  document.querySelectorAll("#sumGrid .sc").forEach(b=>b.onclick=()=>{ const i=+b.dataset.i; if(i<0){ editStep(-1); return; } const pid=STEPS[i].id, j=RVIEWS.findIndex(v=>v.hs[pid]); if(j<0){ editStep(i); return; } rview=j; qvOpen=pid; renderRecap(); document.getElementById("vtabs").scrollIntoView({behavior:"smooth",block:"start"}); });
   // fiche
   const rows=[{n:BASE.name,s:"Châssis, transmission, radio 2,4 GHz",ref:"T2M "+BASE.ref,p:BASE.price,st:"ok"},{n:"Carrosserie "+paint().name,s:paint().note,ref:paint().ref,p:paint().price,st:paint().st}];
   POSTS.forEach(p=>{ const o=sel(p.id); if(cfg[p.id]!==p.opts[0].id) rows.push({n:o.name,s:p.title,ref:o.ref,p:o.price,st:o.st}); });
