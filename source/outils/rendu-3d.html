@@ -1,0 +1,176 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#fff}canvas{display:block}</style></head><body>
+<canvas id="c" width="900" height="900"></canvas>
+<script>
+const FS=`precision highp float;
+uniform vec2 R; uniform int P; uniform int MT; uniform vec3 RIM; uniform int TR; uniform vec3 CP; uniform vec3 CT; uniform float FOV; uniform sampler2D TX; uniform int LBL; uniform float RMT;
+#define PI 3.14159265
+float sdBox(vec3 p, vec3 b){vec3 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,max(q.y,q.z)),0.);}
+float sdB2(vec2 p, vec2 b){vec2 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,q.y),0.);}
+float sdCyl(vec3 p, float r, float h){vec2 d=abs(vec2(length(p.xz),p.y))-vec2(r,h);return min(max(d.x,d.y),0.)+length(max(d,0.));}
+float ext(vec3 p, float d2, float h){vec2 w=vec2(d2,abs(p.y)-h);return min(max(w.x,w.y),0.)+length(max(w,0.));}
+float extR(vec3 p,float d2,float h,float r){return ext(p,d2+r,h-r)-r;}
+vec2 r2(vec2 p,float a){float c=cos(a),s=sin(a);return mat2(c,-s,s,c)*p;}
+float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
+float sdHex2(vec2 p,float r){const vec3 k=vec3(-.866025404,.5,.577350269);p=abs(p);p-=2.*min(dot(k.xy,p),0.)*k.xy;p-=vec2(clamp(p.x,-k.z*r,k.z*r),r);return length(p)*sign(p.y);}
+float sdSeg2(vec2 p,vec2 a,vec2 b){vec2 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h);}
+float tri2(vec2 p,vec2 a,vec2 b,vec2 c){ // signed distance to triangle
+  vec2 e0=b-a,e1=c-b,e2=a-c,v0=p-a,v1=p-b,v2=p-c;
+  vec2 pq0=v0-e0*clamp(dot(v0,e0)/dot(e0,e0),0.,1.),pq1=v1-e1*clamp(dot(v1,e1)/dot(e1,e1),0.,1.),pq2=v2-e2*clamp(dot(v2,e2)/dot(e2,e2),0.,1.);
+  float s=sign(e0.x*e2.y-e0.y*e2.x);
+  vec2 d=min(min(vec2(dot(pq0,pq0),s*(v0.x*e0.y-v0.y*e0.x)),vec2(dot(pq1,pq1),s*(v1.x*e1.y-v1.y*e1.x))),vec2(dot(pq2,pq2),s*(v2.x*e2.y-v2.y*e2.x)));
+  return -sqrt(d.x)*sign(d.y);}
+float mid=0.; // 1 part,2 chrome,3 spring,4 rubber,5 rim,6 case,7 label,8 connector,9 red wire,10 black wire
+vec3 lp=vec3(0.); // local coords for textures
+float U(float d,float m,inout float best,vec3 q){ if(d<best){best=d;mid=m;lp=q;} return best; }
+
+float plate(vec3 p){ vec2 q=p.xz; float body=sdB2(q,vec2(2.0,.36))-.05; float pad=min(sdB2(q-vec2(2.35,0.),vec2(.32,.62)),sdB2(q+vec2(2.35,0.),vec2(.32,.62)))-.06;
+  float s=smin(body,pad,.25);
+  for(int i=0;i<4;i++){ float x=-1.35+float(i)*.9; s=max(s,-(sdB2(r2(q-vec2(x,0.),.785),vec2(.17,.17))-.02)); }
+  s=max(s,-(abs(sdB2(q-vec2(2.35,0.),vec2(.0,.4)))-.06)); s=max(s,-(abs(sdB2(q+vec2(2.35,0.),vec2(.0,.4)))-.06));
+  for(int i=0;i<5;i++){ float x=-1.8+float(i)*.9; s=max(s,-(length(q-vec2(x,0.25))-.045)); s=max(s,-(length(q-vec2(x,-.25))-.045)); }
+  return extR(p-vec2(0.,.06).xyx*vec3(0.,1.,0.),s,.06,.015); }
+float holder(vec3 p){ vec3 q=p; q.x=abs(q.x)-1.0; float b=sdBox(q-vec3(0.,.42,0.),vec3(.22,.42,.75))-.04;
+  b=max(b,-sdBox(q-vec3(0.,.62,0.),vec3(.4,.08,.55))); b=max(b,-sdCyl(q-vec3(0.,.4,.55),.06,.6)); b=max(b,-sdCyl(q-vec3(0.,.4,-.55),.06,.6));
+  b=max(b,-sdBox(q-vec3(0.,.86,0.),vec3(.12,.2,.8)));
+  float bar=sdBox(p-vec3(0.,.06,0.),vec3(1.2,.06,.18))-.02; bar=max(bar,-sdCyl(p.xzy*vec3(1,1,1)-vec3(0.,0.,.06),.05,.2));
+  return min(b,bar); }
+float hub(vec3 p){ vec3 q=p-vec3(0.,.55,0.); float b=sdBox(q,vec3(.42,.5,.26))-.12; b=max(b,-(length(q.xy)-.26)); b=max(b,-sdBox(q-vec3(0.,0.,.25),vec3(.33,.33,.06)));
+  float arm=sdBox(q-vec3(.6,.38,0.),vec3(.3,.08,.14))-.04; arm=max(arm,-sdCyl(q-vec3(.78,.38,0.),.06,.3));
+  b=min(b,arm); b=max(b,-sdCyl(q-vec3(0.,.55,0.),.07,.2)); b=max(b,-sdCyl(q+vec3(0.,.55,0.),.07,.2)); return b; }
+float bearing(vec3 p){ vec3 q=p-vec3(0.,.55,0.); float r=length(q.xy); float d=max(abs(r-.2)-.05,abs(q.z)-.12); return d; }
+float chub(vec3 p){ vec3 q=p-vec3(0.,.6,0.); float r=length(q.xy); float c=max(abs(r-.48)-.13,abs(q.z)-.22); c=max(c,-(q.x-.15)); c-=.02;
+  float ear=sdBox(vec3(q.x-.25,abs(q.y)-.48,q.z),vec3(.2,.08,.22))-.03; ear=max(ear,-sdCyl(vec3(q.x-.32,abs(q.y)-.48,q.z),.06,.3));
+  float base=sdBox(q-vec3(-.55,0.,0.),vec3(.12,.4,.22))-.03; base=max(base,-sdCyl(vec3(q.x+.55,q.z,q.y-.2),.05,.4)); base=max(base,-sdCyl(vec3(q.x+.55,q.z,q.y+.2),.05,.4));
+  return min(min(c,ear),base); }
+float spring(vec3 p,float R0,float y0,float y1,float pitch,float w){ float a=atan(p.z,p.x); float y=p.y-pitch*a/(2.*PI); float yy=mod(y-y0,pitch)-pitch*.5; float d=length(vec2(length(p.xz)-R0,yy))-w; return max(d,max(y0-p.y,p.y-y1)-.0); }
+float shockBody(vec3 p){ float body=sdCyl(p-vec3(0.,1.25,0.),.27,.62)-.02; float cap=sdCyl(p-vec3(0.,1.95,0.),.31,.1)-.02; float coll=sdCyl(p-vec3(0.,.78,0.),.36,.06)-.015;
+  float top=sdCyl(p-vec3(0.,2.15,0.),.14,.12); float eye=max(abs(length(p.xy-vec2(0.,2.36))-.13)-.06,abs(p.z)-.07);
+  float fins=1e5; for(int i=0;i<6;i++){ fins=min(fins,sdCyl(p-vec3(0.,1.0+float(i)*.16,0.),.3,.025)); }
+  return min(min(min(body,cap),min(coll,top)),min(eye,fins)); }
+float shockRod(vec3 p){ return min(sdCyl(p-vec3(0.,.42,0.),.06,.22), max(abs(length(p.xy-vec2(0.,.12))-.11)-.06,abs(p.z)-.08)); }
+float tower(vec3 p){ vec3 q=p-vec3(0.,.9,0.); vec2 s2=q.xy; float arch=max(sdB2(s2,vec2(1.55,.7))-.08,length(s2+vec2(0.,1.6))-2.25);
+  for(int i=0;i<5;i++){ float a=-.6+float(i)*.3; vec2 c=vec2(sin(a),cos(a))*1.95-vec2(0.,1.6); arch=max(arch,-(length(s2-c)-.07)); }
+  arch=max(arch,-(sdB2(s2-vec2(0.,-.15),vec2(.35,.22))-.08)); arch=max(arch,-(length(s2-vec2(-.85,-.25))-.13)); arch=max(arch,-(length(s2-vec2(.85,-.25))-.13));
+  float pl=max(arch,abs(q.z)-.07)-.01; float fl=sdBox(q-vec3(0.,-.74,.25),vec3(1.4,.06,.32))-.02; fl=max(fl,-sdCyl(q-vec3(-1.,-.74,.35),.06,.2)); fl=max(fl,-sdCyl(q-vec3(1.,-.74,.35),.06,.2));
+  return min(pl,fl); }
+float mount(vec3 p){ vec3 q=p-vec3(0.,.3,0.); float b=sdBox(q,vec3(1.1,.26,.3))-.06; 
+  b=max(b,-sdCyl(vec3(q.x-.8,q.z,q.y),.09,.5)*1.); b=max(b,-sdCyl(vec3(q.x+.8,q.z,q.y),.09,.5));
+  b=max(b,-sdCyl(q-vec3(-.35,.2,0.),.07,.3)); b=max(b,-sdCyl(q-vec3(.35,.2,0.),.07,.3)); b=max(b,-sdBox(q-vec3(0.,.25,0.),vec3(.12,.1,.35)));
+  return b; }
+float arm(vec3 p){ vec2 q=p.xz; float t=tri2(q,vec2(-1.5,-.9),vec2(-1.5,.9),vec2(1.45,0.))-.12; t=max(t,-(tri2(q,vec2(-1.05,-.48),vec2(-1.05,.48),vec2(.6,0.))-.03));
+  float pl=extR(p-vec3(0.,.12,0.),t,.1,.03); float rib=extR(p-vec3(0.,.2,0.),abs(sdSeg2(q,vec2(-1.4,0.),vec2(1.3,0.)))-.06,.12,.02); rib=max(rib,t);
+  float piv=min(sdCyl(vec3(p.x+1.5,p.z-.75,p.y-.18).xzy,.16,.22),sdCyl(vec3(p.x+1.5,p.z+.75,p.y-.18).xzy,.16,.22));
+  piv=max(piv,-sdCyl(vec3(p.x+1.5,abs(p.z)-.75,p.y-.18).xzy,.07,.4));
+  float tip=sdCyl(p-vec3(1.5,.18,0.),.2,.18); tip=max(tip,-sdCyl(p-vec3(1.5,.18,0.),.08,.4));
+  return min(min(pl,rib),min(piv,tip)); }
+float saver(vec3 p){ float bar=sdBox(p-vec3(0.,.14,0.),vec3(1.4,.09,.2))-.04; bar=max(bar,-sdBox(p-vec3(-.55,.14,0.),vec3(.35,.2,.07))); bar=max(bar,-sdBox(p-vec3(.55,.14,0.),vec3(.35,.2,.07)));
+  float post=sdCyl(p-vec3(0.,.35,0.),.2,.25)-.02; post=max(post,-sdHex2(p.xz,.1)*1.+(-1e5)*0.); return min(bar,post); }
+float studs(vec3 p){ vec3 q=vec3(abs(p.x)-1.3,p.y,p.z); return min(sdCyl(q-vec3(0.,.32,0.),.06,.12),length(q-vec3(0.,.48,0.))-.13); }
+float hexs(vec3 p){ vec3 q=p; q.xz=abs(q.xz)-vec2(.55); float h=extR(q-vec3(0.,.22,0.),sdHex2(q.xz,.36),.22,.03); h=max(h,-sdCyl(q-vec3(0.,.22,0.),.13,.4)); h=max(h,-sdCyl(q-vec3(0.,.42,0.),.2,.04)); return h; }
+float battCase(vec3 p){ return sdBox(p-vec3(0.,.42,0.),vec3(1.8,.38,.62))-.08; }
+// wheel: axle along z
+float tire(vec3 p, out float isTread){ isTread=0.; float r=length(p.xy); vec2 q=vec2(r-.78,p.z); float t=sdB2(q,vec2(.22,.38))-.12;
+  float a=atan(p.y,p.x);
+  if(TR==1){ // pins
+    float n=36.; float ca=floor(a/(2.*PI)*n+.5); float aa=a-ca*2.*PI/n; vec2 lc=vec2(r*sin(aa),p.z);
+    float zz=mod(lc.y+.12,.24)-.12; float pin=sdBox(vec3(lc.x,r-1.08,zz),vec3(.035,.06,.035))-.012; pin=max(pin,abs(p.z)-.5);
+    float n2=36.; float ca2=floor(a/(2.*PI)*n2); float aa2=a-(ca2+.5)*2.*PI/n2; vec2 lc2=vec2(r*sin(aa2),p.z+.12); float zz2=mod(lc2.y+.12,.24)-.12;
+    float pin2=sdBox(vec3(lc2.x,r-1.08,zz2),vec3(.035,.06,.035))-.012; pin2=max(pin2,abs(p.z)-.42);
+    float pp=min(pin,pin2); if(pp<t) isTread=1.; t=min(t,pp);
+  } else if(TR==2){ // block
+    float n=24.; float ca=floor(a/(2.*PI)*n+.5); float aa=a-ca*2.*PI/n; float lx=r*sin(aa); float zz=mod(p.z+.16,.32)-.16;
+    float bl=sdBox(vec3(lx,r-1.12,zz),vec3(.075,.06,.1))-.015; bl=max(bl,abs(p.z)-.48); if(bl<t) isTread=1.; t=min(t,bl);
+  } else if(TR==3){ // multi chevrons
+    float n=30.; float ca=floor(a/(2.*PI)*n+.5); float aa=a-ca*2.*PI/n; float lx=r*sin(aa); float zz=p.z;
+    float ch=sdBox(vec3(lx-abs(zz)*.25,r-1.12,zz),vec3(.04,.05,.42))-.01; ch=max(ch,-(abs(zz)-.05)); if(ch<t) isTread=1.; t=min(t,ch);
+  } else if(TR==4){ // street grooves
+    t=max(t,-(abs(abs(p.z)-.16)-.025)+ (r<1.08? 0.:0.)); t=max(t,-(abs(p.z)-.02)*(1.)+0.);
+    float n=48.; float ca=floor(a/(2.*PI)*n+.5); float aa=a-ca*2.*PI/n; float lx=r*sin(aa); float sipe=sdBox(vec3(lx,r-1.1,p.z-.32),vec3(.012,.05,.08)); t=max(t,-sipe); float sipe2=sdBox(vec3(lx,r-1.1,p.z+.32),vec3(.012,.05,.08)); t=max(t,-sipe2);
+  }
+  return max(t,-(length(p.xy)-.62)); }
+float rim(vec3 p){ float r=length(p.xy); float barrel=max(abs(r-.62)-.05,abs(p.z)-.36); float a=atan(p.y,p.x);
+  float ns=TR==4?6.:(RIM.r>.75&&RIM.g>.75)?5.:12.; float ca=floor(a/(2.*PI)*ns+.5); vec2 lc=r2(p.xy,-ca*2.*PI/ns);
+  float sp=sdBox(vec3(lc.x-.36,lc.y,p.z-.18),vec3(.28,ns>10.?.035:.07,.06))-.015; float face=max(abs(r-.5)-.1, abs(p.z-.22)-.04);
+  float hubd=sdCyl(vec3(p.x,p.z-.12,p.y),.16,.16); hubd=max(hubd,-sdCyl(vec3(p.x,p.z-.3,p.y),.07,.1));
+  return min(min(barrel,sp),min(face,hubd)); }
+
+float map(vec3 p){ float best=1e5; mid=0.;
+  U(p.y,0.,best,p);
+  if(P==0) U(plate(p),1.,best,p);
+  else if(P==1) U(holder(p),1.,best,p);
+  else if(P==2){ U(hub(p),1.,best,p); U(bearing(p),2.,best,p); }
+  else if(P==3) U(chub(p),1.,best,p);
+  else if(P==4){ vec3 a=p-vec3(-.9,0.,0.); U(chub(a),1.,best,a); vec3 b=p-vec3(.85,0.,.1); U(hub(b),1.,best,b); U(bearing(b),2.,best,b); }
+  else if(P==5){ vec3 q=p-vec3(0.,.0,0.); U(shockBody(q),1.,best,q); U(shockRod(q),2.,best,q); U(spring(q,.42,.5,1.85,.17,.04),3.,best,q); }
+  else if(P==6) U(tower(p),1.,best,p);
+  else if(P==7) U(mount(p),1.,best,p);
+  else if(P==8){ U(arm(p),1.,best,p); }
+  else if(P==9){ U(saver(p),1.,best,p); U(studs(p),2.,best,p); }
+  else if(P==10) U(hexs(p),1.,best,p);
+  else if(P==11){ U(battCase(p),6.,best,p); float lab=sdBox(p-vec3(-.05,.885,0.),vec3(1.55,.01,.5))-.004; U(lab,7.,best,p);
+     float w1=sdSeg2(vec2(p.x-1.88,p.y-.55),vec2(0.),vec2(.35,.0)); float wr=length(vec2(w1,p.z-.12))-.05; U(wr,9.,best,p); float wb=length(vec2(w1,p.z+.12))-.05; U(wb,10.,best,p);
+     U(sdBox(p-vec3(2.35,.55,0.),vec3(.14,.12,.26))-.03,8.,best,p); }
+  else if(P==12){ vec3 q=p-vec3(0.,1.12,0.); float tt; float t=tire(q,tt); U(t,4.,best,q); U(rim(q),5.,best,q); }
+  return best; }
+vec3 nor(vec3 p){ vec2 e=vec2(.0015,0.); return normalize(vec3(map(p+e.xyy)-map(p-e.xyy),map(p+e.yxy)-map(p-e.yxy),map(p+e.yyx)-map(p-e.yyx))); }
+float shadow(vec3 ro,vec3 rd){ float res=1.,t=.02; for(int i=0;i<64;i++){ float h=map(ro+rd*t); if(mid==0.&&h>.5){} res=min(res,10.*h/t); t+=clamp(h,.01,.2); if(res<.002||t>8.) break; } return clamp(res,0.,1.); }
+float ao(vec3 p,vec3 n){ float o=0.,s=1.; for(int i=1;i<6;i++){ float h=.03*float(i); o+=(h-map(p+n*h))*s; s*=.7; } return clamp(1.-2.5*o,0.,1.); }
+vec3 env(vec3 d){ vec3 c=mix(vec3(.08,.09,.11),vec3(1.1),smoothstep(-.05,.85,d.y)); c*=.65+.45*smoothstep(-1.,1.,d.x); c=mix(c,vec3(.02),smoothstep(.06,.0,abs(d.y-.12))*.6); c+=2.2*smoothstep(.86,.97,dot(d,normalize(vec3(-.5,.75,.45)))); c+=1.1*smoothstep(.9,.99,dot(d,normalize(vec3(.8,.4,-.3)))); c+=.6*smoothstep(.0,.3,d.y)*smoothstep(.6,1.,abs(d.x)); return c; }
+vec3 bg(vec2 uv){ float r=length(uv-vec2(-.18,.25)); return mix(vec3(1.),vec3(.76,.79,.84),smoothstep(.1,1.25,r)); }
+void main(){
+  vec2 uv=(gl_FragCoord.xy-.5*R)/R.y;
+  vec3 ww=normalize(CT-CP),uu=normalize(cross(ww,vec3(0.,1.,0.))),vv=cross(uu,ww); vec3 rd=normalize(uv.x*uu+uv.y*vv+FOV*ww); vec3 ro=CP;
+  float t=0.; float m=-1.; for(int i=0;i<220;i++){ float h=map(ro+rd*t); if(h<.0008){ m=mid; break; } t+=h*.9; if(t>30.) break; }
+  vec3 B=bg(uv); vec3 col=B; vec3 L=normalize(vec3(-.5,.9,.45));
+  if(m>=0.){
+    vec3 p=ro+rd*t; float mm=mid; vec3 q=lp; vec3 n=nor(p); float sh=shadow(p+n*.004,L); float oc=ao(p,n);
+    if(mm==0.){ float g=.55+.45*sh; g*=.6+.4*oc; vec3 gc=B*g; float fade=smoothstep(2.5,6.5,length(p.xz)); col=mix(gc,B,fade); }
+    else {
+      vec3 r=reflect(rd,n); float fr=pow(1.-max(dot(n,-rd),0.),5.); float dif=max(dot(n,L),0.)*sh; vec3 amb=vec3(.55)*oc+.25*oc*max(n.y,0.);
+      vec3 base; float metal=0.,rough=.5;
+      if(mm==1.){
+        if(MT==1){ base=vec3(.05,.2,.95)*(.93+.07*sin(q.x*420.+3.*sin(q.z*30.))); metal=1.; rough=.16; }
+        else if(MT==2){ base=vec3(.85,.87,.9); metal=1.; rough=.22; base*=.88+.12*sin(q.x*260.+sin(q.z*40.)); }
+        else if(MT==3){ base=vec3(.07,.075,.085)*(.93+.07*sin(q.x*420.)); metal=1.; rough=.2; }
+        else if(MT==5){ base=vec3(1.,.42,.05); metal=1.; rough=.28; }
+        else if(MT==4){ vec2 w=(abs(n.y)>.5?q.xz:(abs(n.x)>.5?q.zy:q.xy))*9.; vec2 c=floor(w); float ty=mod(c.x+c.y,2.); vec2 f=fract(w); float fib=ty<.5?f.x:f.y; base=vec3(.035)+vec3(.05)*ty+vec3(.025)*sin(fib*PI); metal=0.; rough=.18; }
+        else { base=vec3(.06); rough=.6; }
+      } else if(mm==2.){ base=vec3(.9); metal=1.; rough=.08; }
+      else if(mm==3.){ base=vec3(.92); metal=1.; rough=.18; }
+      else if(mm==4.){ base=vec3(.035); rough=.8; }
+      else if(mm==5.){ base=RIM; metal=RMT; rough=metal>0.?.18:.42; }
+      else if(mm==6.){ base=vec3(.05,.055,.06); rough=.35; }
+      else if(mm==7.){ vec2 tuv=vec2((q.x+1.6)/3.1,(q.z+.5)/1.); tuv=clamp(tuv,0.,1.); base=texture2D(TX,tuv).rgb; rough=.25; }
+      else if(mm==8.){ base=vec3(.95,.75,.1); rough=.4; }
+      else if(mm==9.){ base=vec3(.75,.05,.05); rough=.3; }
+      else { base=vec3(.04); rough=.3; }
+      vec3 e=mix(env(r),vec3(.75),rough*.8);
+      float spec=pow(max(dot(r,L),0.),mix(90.,18.,rough))*sh; float spec2=pow(max(dot(r,normalize(vec3(.8,.4,-.3))),0.),30.);
+      if(metal>.5){ col=base*e*(.45+.55*oc)+base*dif*.35; col+=fr*e*.45*mix(base,vec3(1.),.6); col+=(base*.6+.4)*spec*1.6+base*spec2*.5; col*=.8+.35*smoothstep(-.4,.9,n.y); }
+      else { col=base*(amb+dif*1.1)+e*mix(.04,1.,fr)*(1.-rough*.7)*(mm==1.&&MT==4?1.6:1.); if(mm==1.&&MT==4){ col+=e*.05+vec3(1.)*spec*.9; } if(mm==4.){ col+=vec3(.06)*pow(1.-max(dot(n,-rd),0.),2.); } }
+      col*=.85+.15*sh;
+    }
+  }
+  col=pow(clamp(col,0.,1.),vec3(.95));
+  gl_FragColor=vec4(col,1.);
+}`;
+const cv=document.getElementById('c'), gl=cv.getContext('webgl',{preserveDrawingBuffer:true});
+const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o));return o;};
+const pr=gl.createProgram(); gl.attachShader(pr,sh(gl.VERTEX_SHADER,'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}')); gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS)); gl.linkProgram(pr);
+if(!gl.getProgramParameter(pr,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+gl.useProgram(pr); const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+const loc=gl.getAttribLocation(pr,'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+const U=k=>gl.getUniformLocation(pr,k);
+const tex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,tex); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+function label(cap,cells,c){ const t=document.createElement('canvas'); t.width=1024; t.height=330; const x=t.getContext('2d');
+  const g=x.createLinearGradient(0,0,1024,330); g.addColorStop(0,c[0]); g.addColorStop(1,c[1]); x.fillStyle=g; x.fillRect(0,0,1024,330);
+  x.fillStyle='rgba(255,255,255,.12)'; for(let i=0;i<8;i++){ x.fillRect(560+i*60,0,24,330); }
+  x.fillStyle='#fff'; x.font='900 150px Arial Black, Arial, sans-serif'; const cw=x.measureText(cap).width; x.fillText(cap,40,190); x.font='700 64px Arial, sans-serif'; x.fillText('mAh',40+cw+18,190);
+  x.font='700 54px Arial, sans-serif'; x.fillText('LiPo '+cells,44,280); x.fillStyle='rgba(255,255,255,.85)'; x.fillRect(700,240,280,56); x.fillStyle='#111'; x.font='700 40px Arial'; x.fillText(cells==='3S'?'11,1 V · 50C':'7,4 V · 40C',712,282);
+  gl.bindTexture(gl.TEXTURE_2D,tex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,t); }
+window.renderJob=(j)=>{
+  if(j.label) label(j.label[0],j.label[1],j.label[2]); else label('','',['#000','#000']);
+  gl.uniform2f(U('R'),cv.width,cv.height); gl.uniform1i(U('P'),j.P); gl.uniform1i(U('MT'),j.MT||0); gl.uniform3f(U('RIM'),...(j.rim||[0,0,0])); gl.uniform1i(U('TR'),j.TR||0); gl.uniform1f(U('RMT'),j.rmt||0);
+  gl.uniform3f(U('CP'),...j.cp); gl.uniform3f(U('CT'),...j.ct); gl.uniform1f(U('FOV'),j.fov||2.2); gl.uniform1i(U('TX'),0);
+  gl.drawArrays(gl.TRIANGLES,0,3); gl.finish(); return cv.toDataURL('image/png'); };
+</script></body></html>
