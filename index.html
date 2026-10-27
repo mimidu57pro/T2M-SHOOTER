@@ -565,10 +565,10 @@ const POSTS = [
   desc:"Garde le moteur d'origine ou passe au brushless pour aller plus vite. Le pignon brushless est ajouté automatiquement.",
   view:o=>o.id==="m0"?{img:"brushed",c:[55,50],z:2.1,p:[55,47]}:{img:"brushless",c:[44,56],z:1.35,p:[40,63]},
   opts:[
-   {id:"m0",ph:"m0",name:"Moteur brushed 550 15T",meta:"D'origine · ≈ 45 km/h · LiPo 2S",ref:"Rechange T4905/7 · 18,25 €",price:0,st:"ok",draw:{t:"motor",k:0},speed:45},
-   {id:"m1",ph:"m2",name:"Combo Rush 45A + brushless 3100 kV",meta:"Variateur étanche · LiPo 2S à 3S",ref:"T2M T4900631",price:74.30,st:"ok",draw:{t:"motor",k:1},speed:55},
-   {id:"m2",ph:"m2",name:"Combo Rush 60A + brushless 3100 kV",meta:"La config du Shooter II Brushless · ≈ 60 km/h",ref:"T2M T4900731",price:89.90,st:"ok",draw:{t:"motor",k:2},speed:60},
-   {id:"m3",ph:"m2",name:"Combo Rush 60A + brushless 4300 kV",meta:"Le plus nerveux · rapport à adapter",ref:"T2M T4900743",price:94.90,st:"est",draw:{t:"motor",k:3},speed:65}
+   {id:"m0",short:"Brushed 550 15T",ph:"m0",name:"Moteur brushed 550 15T",meta:"D'origine · ≈ 45 km/h · LiPo 2S",ref:"Rechange T4905/7 · 18,25 €",price:0,st:"ok",draw:{t:"motor",k:0},speed:45},
+   {id:"m1",short:"Rush 3100 kV · 45A",ph:"m2",name:"Combo Rush 45A + brushless 3100 kV",meta:"Variateur étanche · LiPo 2S à 3S",ref:"T2M T4900631",price:74.30,st:"ok",draw:{t:"motor",k:1},speed:55},
+   {id:"m2",short:"Rush 3100 kV · 60A",ph:"m2",name:"Combo Rush 60A + brushless 3100 kV",meta:"La config du Shooter II Brushless · ≈ 60 km/h",ref:"T2M T4900731",price:89.90,st:"ok",draw:{t:"motor",k:2},speed:60},
+   {id:"m3",short:"Rush 4300 kV · 60A",ph:"m2",name:"Combo Rush 60A + brushless 4300 kV",meta:"Le plus nerveux · rapport à adapter",ref:"T2M T4900743",price:94.90,st:"est",draw:{t:"motor",k:3},speed:65}
   ]},
  {id:"batterie", ic:"", title:"Batterie", hs:[63,37],
   desc:"Plus de mAh, plus de temps de roulage. Le 3S demande un moteur brushless.",
@@ -866,7 +866,7 @@ function showFrame(p,o,anim){
   lens.style.left=`${right?Math.min(g.px+8,62):Math.max(g.px-8-36,2)}%`; lens.style.top=`${low?Math.min(g.py+6,40):Math.max(g.py-6-52,4)}%`;
   if(lastShown[p.id]!==o.id){
     lens.querySelector(".lph")?.remove(); lens.insertAdjacentHTML("afterbegin",`<span class="lph">${photo(o)}</span>`);
-    lens.querySelector(".lbl").textContent=o.short?o.short:o.m?M[o.m]:(o.id==="b0"?"Sans":o.name.split(",")[0].split(" + ")[0].slice(0,24));
+    lens.querySelector(".lbl").textContent=shortName(o);
     if(anim){ lens.classList.remove("swap"); void lens.offsetWidth; lens.classList.add("swap"); }
     lastShown[p.id]=o.id;
   }
@@ -894,6 +894,7 @@ function renderSpare(p){ const el=document.getElementById("sp-"+p.id); if(!el) r
   el.querySelector(".sp-h").onclick=()=>{ if(el.dataset.open) delete el.dataset.open; else el.dataset.open="1"; renderSpare(p); fitVp(); };
   el.querySelectorAll(".stp button").forEach(b=>b.onclick=()=>{ const id=b.dataset.o; X[id]=Math.max(0,Math.min(4,(X[id]||0)+(+b.dataset.d))); save(); renderSpare(p); refresh(); fitVp(); });
 }
+function shortName(o){ if(o.short) return o.short; if(o.id==="b0") return "Sans batterie"; if(o.m) return o.price?M[o.m]:M[o.m]+" · origine"; let n=o.name.replace(/^Combo /,""); if(n.length<=26) return n; const cut=n.slice(0,26); return cut.slice(0,cut.lastIndexOf(" "))+"…"; }
 function centerSel(box){ if(box.scrollWidth<=box.clientWidth+4) return; const s=box.querySelector(".opt.sel"); if(!s) return; const x=s.offsetLeft-(box.clientWidth-s.offsetWidth)/2; try{ box.scrollTo({left:x,behavior:"smooth"}); }catch(e){ box.scrollLeft=x; } }
 function renderOpts(p){
   const box=document.getElementById("op-"+p.id); const keepX=box.scrollLeft;
