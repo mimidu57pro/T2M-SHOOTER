@@ -246,6 +246,7 @@ button{font:inherit;color:inherit}
 .sp-n{font-size:14px;font-weight:600}.sp-n small{display:block;font-family:var(--f-cond);font-weight:500;font-size:14px;color:var(--muted)}
 /* ---------- mobile : configurateur compact ---------- */
 .swipe-hint{display:none}
+.o-short{display:none}
 @media (hover:none){.opt:hover{transform:none;border-color:var(--line)}.opt.sel,.opt.sel:hover{border-color:var(--acc)}}
 .opt.sel{box-shadow:inset 0 0 0 1px var(--acc)}
 @media (max-width:760px){
@@ -266,26 +267,30 @@ button{font:inherit;color:inherit}
  .slide .post-num{font-size:46px}
  .slide .post-head h3{font-size:30px}
  .slide .post-desc{margin:4px 0 6px;font-size:14px}
- .swipe-hint{display:flex;align-items:center;gap:6px;margin:0 0 8px;font-family:var(--f-cond);font-size:14px;color:var(--acc)}
+ .swipe-hint{display:flex;align-items:center;gap:6px;margin:0 0 6px;font-family:var(--f-cond);font-size:14px;color:var(--acc)}
  .swipe-hint::after{content:"→";animation:nudge 1.6s ease-in-out infinite}
  @keyframes nudge{50%{transform:translateX(5px)}}
- .slide .opts{flex-direction:row;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;margin:0 -14px;padding:3px 14px 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+ .slide .opts{flex-direction:row;overflow-x:auto;scroll-snap-type:x mandatory;gap:7px;margin:0 -14px;padding:3px 14px 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
  .slide .opts::-webkit-scrollbar{display:none}
- .slide .opt{flex:0 0 44%;scroll-snap-align:center;display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:7px;min-height:0;border-radius:14px}
+ .slide .opt{flex:0 0 31%;scroll-snap-align:center;display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:5px 5px 7px;min-height:0;border-radius:12px}
  .slide .opt .thumb{width:100%;height:auto;aspect-ratio:1;border-radius:9px}
  .slide .opt .thumb img{object-fit:cover;object-position:50% 50%}
- .slide .o-name{font-size:13px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
- .slide .o-meta{font-size:11px;display:-webkit-box!important;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
- .slide .o-ref{font-size:9.5px;gap:3px 6px}
+ .slide .o-name{font-size:11.5px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+ .slide .o-meta{display:none!important}
+ .slide .o-full{display:none}
+ .slide .o-short{display:inline}
+ .sp-h small{display:none}
+ .slide .o-ref{font-size:8.5px;gap:3px 6px;margin-top:2px}
+ .slide .o-ref .tag{font-size:8px;padding:0 4px}
  .slide .o-ref>span:first-child{display:none}
- .slide .o-price{text-align:left;padding:0;font-size:13.5px;color:var(--fg)}
+ .slide .o-price{text-align:left;padding:0;font-size:12px;color:var(--fg)}
  .slide .o-price small{display:none!important}
  .slide .o-price small{display:inline;margin-left:6px}
  .slide .opt.sel{background:linear-gradient(180deg,var(--acc-soft),var(--panel) 75%);box-shadow:inset 0 0 0 2px var(--acc)}
- .slide .opt.sel::after{top:12px;right:12px;width:22px;height:22px;font-size:12px;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+ .slide .opt.sel::after{top:9px;right:9px;width:18px;height:18px;font-size:10px;box-shadow:0 2px 10px rgba(0,0,0,.4)}
  .slide .post-num{font-size:38px}
  .slide .post-head h3{font-size:26px}
- .slide .frame{width:min(100%,calc(36svh * 1.5));margin-inline:auto}
+ .slide .frame{width:min(100%,calc(34svh * 1.5));margin-inline:auto}
  #op-paint{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
  #op-paint .opt{grid-template-columns:1fr;justify-items:center;text-align:center;padding:12px 8px;gap:6px}
  #op-paint .o-ref{justify-content:center}
@@ -892,7 +897,7 @@ function renderOpts(p){
   box.innerHTML=p.opts.map(o=>{ const dis=o.needs&&!o.needs(cfg), on=cfg[p.id]===o.id;
     return `<label class="opt ${on?'sel':''} ${dis?'dis':''}" data-o="${o.id}"><input type="radio" id="${p.id}-${o.id}" name="${p.id}" value="${o.id}" ${on?'checked':''} ${dis?'disabled':''}>
      <span class="thumb">${photo(o)}</span>
-     <span style="min-width:0"><span class="o-name">${o.name}</span><span class="o-meta" style="display:block">${dis?o.why:o.meta}</span>
+     <span style="min-width:0"><span class="o-name"><span class="o-full">${o.name}</span><span class="o-short">${o.short||o.name}</span></span><span class="o-meta" style="display:block">${dis?o.why:o.meta}</span>
       <span class="o-ref"><span>${o.ref}</span>${TAG[o.st]}</span></span>
      <span class="o-price">${o.price?"+ "+fmt(o.price):"Inclus"}${o.m?`<small>${M[o.m]}</small>`:""}</span></label>`; }).join("");
   box.querySelectorAll(".opt").forEach(l=>{
@@ -927,7 +932,7 @@ function updateNav(){
   const g=document.getElementById("gate"); if(g) g.hidden=painted(); document.getElementById("deck").classList.toggle("locked",!painted());
   const pv=document.getElementById("prevBtn"), nx=document.getElementById("nextBtn"), last=nav.cur===STEPS.length-1;
   pv.disabled=nav.cur===0;
-  nx.innerHTML=last?"Voir mon compte-rendu →":`Suivant<span class="nx-t"> : ${STEPS[nav.cur+1].title}</span> →`;
+  nx.innerHTML=last?`<span class="nx-t">Voir mon </span>Compte-rendu →`:`Suivant<span class="nx-t"> : ${STEPS[nav.cur+1].title}</span> →`;
 }
 document.getElementById("prevBtn").onclick=()=>go(nav.cur-1);
 document.getElementById("nextBtn").onclick=()=>{ if(nav.cur===STEPS.length-1){ nav.done=true; saveNav(); refresh(); renderSteps(); setTimeout(()=>document.getElementById("fiche").scrollIntoView({behavior:"smooth",block:"start"}),60); } else go(nav.cur+1); };
