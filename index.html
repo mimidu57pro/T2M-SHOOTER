@@ -255,6 +255,7 @@ button{font:inherit;color:inherit}
 /* ---------- mobile : configurateur compact ---------- */
 .swipe-hint{display:none}
 .o-short{display:none}
+.nx-m{display:none}
 @media (hover:none){.opt:hover{transform:none;border-color:var(--line)}.opt.sel,.opt.sel:hover{border-color:var(--acc)}}
 .opt.sel{box-shadow:inset 0 0 0 1px var(--acc)}
 @media (max-width:760px){
@@ -270,6 +271,7 @@ button{font:inherit;color:inherit}
  .live .lt{display:none}
  .live .lt-tot{display:inline!important;font-size:16px}
  .nx-t{display:none}
+ .nx-m{display:inline}
  .deck-nav .cta{min-height:46px}
  .slide .post-head{gap:10px;margin:2px 0 0}
  .slide .post-num{font-size:46px}
@@ -941,7 +943,7 @@ function updateNav(){
   const g=document.getElementById("gate"); if(g) g.hidden=painted(); document.getElementById("deck").classList.toggle("locked",!painted());
   const pv=document.getElementById("prevBtn"), nx=document.getElementById("nextBtn"), last=nav.cur===STEPS.length-1;
   pv.disabled=nav.cur===0;
-  nx.innerHTML=last?`<span class="nx-t">Voir mon </span>Compte-rendu →`:`Suivant<span class="nx-t"> : ${STEPS[nav.cur+1].title}</span> →`;
+  nx.innerHTML=last?`<span class="nx-t">Voir mon compte-rendu</span><span class="nx-m">Compte-rendu</span> →`:`Suivant<span class="nx-t"> : ${STEPS[nav.cur+1].title}</span> →`;
 }
 document.getElementById("prevBtn").onclick=()=>go(nav.cur-1);
 document.getElementById("nextBtn").onclick=()=>{ if(nav.cur===STEPS.length-1){ nav.done=true; saveNav(); refresh(); renderSteps(); setTimeout(()=>document.getElementById("fiche").scrollIntoView({behavior:"smooth",block:"start"}),60); } else go(nav.cur+1); };
