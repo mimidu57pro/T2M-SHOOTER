@@ -67,6 +67,7 @@ button{font:inherit;color:inherit}
 .paint-name b{color:var(--fg);font-weight:600}
 .cta{display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 22px;border-radius:999px;border:0;background:var(--acc);color:var(--acc-ink);font-weight:700;letter-spacing:.02em;cursor:pointer;text-decoration:none;box-shadow:0 14px 40px -14px var(--acc-glow)}
 .cta.ghost{background:transparent;color:var(--fg);border:1px solid var(--line2);box-shadow:none}
+.cta.danger{border-color:#ff5c6c;color:#ff8a95}
 .hero-car{position:relative}
 .hero-car canvas{width:100%;max-width:100%;aspect-ratio:3/2;display:block;border-radius:22px;border:1px solid var(--line2);box-shadow:0 40px 80px -40px var(--acc-glow)}
 .hero-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.3fr);gap:28px;align-items:center}
@@ -237,6 +238,12 @@ button{font:inherit;color:inherit}
 .stp span{min-width:18px;text-align:center;font-size:16px}
 .sp-p{font-size:13.5px;color:var(--acc);min-width:72px;text-align:right}
 @media (max-width:520px){.spare{grid-template-columns:minmax(0,1fr) auto}.sp-p{grid-column:1/-1;text-align:left}}
+.spare{display:block!important;padding:0!important;overflow:hidden}
+.sp-h{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border:0;background:transparent;cursor:pointer;text-align:left}
+.sp-l{display:flex;flex-direction:column;gap:6px;padding:0 10px 10px}
+.sp-r{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:6px;border-radius:12px;background:var(--panel)}
+.thumb.sm{width:44px;height:44px;border-radius:8px}
+.sp-n{font-size:14px;font-weight:600}.sp-n small{display:block;font-family:var(--f-cond);font-weight:500;font-size:14px;color:var(--muted)}
 /* ---------- deck de prépa ---------- */
 .deck{border:1px solid var(--line2);border-radius:28px;background:linear-gradient(180deg,var(--bg2),var(--bg));box-shadow:0 50px 120px -60px var(--acc-glow);overflow:hidden;outline:none}
 .deck-top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:rgba(13,15,20,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
@@ -461,7 +468,7 @@ footer p{max-width:80ch;margin:0 0 8px}
     <div class="bomwrap"><table><thead><tr><th>Pièce</th><th>Référence</th><th class="r">Prix</th></tr></thead><tbody id="bom"></tbody><tfoot><tr><td colspan="2">Total</td><td class="r" id="bomTot"></td></tr></tfoot></table></div>
     <p class="notice"><span class="tag ok">vérifié</span> prix relevé en ligne chez un revendeur en octobre 2026 · <span class="tag est">estimé</span> référence ou prix à confirmer · <span class="tag atl">atelier</span> pièce fabriquée par l'atelier, prix à fixer. Performances : estimations de l'atelier.</p>
     <div id="doneBox"></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px"><button class="cta" id="order" type="button">Commander</button><button class="cta ghost" id="restart" type="button">Reprendre depuis l'étape 1</button></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px"><button class="cta" id="order" type="button">Commander</button><button class="cta ghost" id="restart" type="button">Recommencer depuis l'étape 1</button></div>
   </div>
 </div></section>
 
@@ -570,18 +577,19 @@ const POSTS = [
    {id:"d1",ph:"x_d1",name:"Barre d'Ackermann alu",meta:"Usinée, anodisée bleu",ref:"T2M T4900/31B",price:9.50,st:"ok",m:"blue",draw:{t:"saver"}}
   ]},
  {id:"jantes", ic:"", title:"Jantes", hs:[52,66],
-  desc:"Choisis tes jantes. Les pneus de l'étape suivante sont collés dessus à l'atelier.",
-  view:()=>({img:"car",c:[54,68],z:1.8,p:[55,71]}), spare:{label:"Jeux de jantes en plus",unit:"le jeu de 4",base:45.80},
+  desc:"Choisis la couleur de tes jantes. Les pneus de l'étape suivante sont collés dessus à l'atelier.",
+  view:()=>({img:"car",c:[54,68],z:1.8,p:[55,71]}), spare:{label:"Jantes en plus",what:"jantes",unit:"le jeu de 4",base:45.80},
   opts:[
-   {id:"j0",name:"Jantes noires",meta:"D'origine · hexagone 12 mm",ref:"Rechange T4910/2A · 22,90 € la paire",price:0,st:"ok",dyn:"rim"},
-   {id:"j1",name:"Jantes blanches",meta:"Plastique renforcé, hexagone 12 mm",ref:"Jantes buggy 1/10 blanches",price:19.90,st:"est",dyn:"rim"},
-   {id:"j2",name:"Jantes alu brut CNC",meta:"Usinées, plus rigides",ref:"Atelier PSL-JNT-AL",price:49.90,st:"atl",m:"alu",dyn:"rim"},
-   {id:"j3",name:"Jantes alu anodisé bleu",meta:"Assorties aux pièces alu bleues",ref:"Atelier PSL-JNT-BL",price:54.90,st:"atl",m:"blue",dyn:"rim"},
-   {id:"j4",name:"Jantes alu anodisé orange",meta:"Le contraste course",ref:"Atelier PSL-JNT-OR",price:54.90,st:"atl",m:"orange",dyn:"rim"}
+   {id:"j0",name:"Jantes noires",meta:"D'origine · plastique moulé, hexagone 12 mm",ref:"Rechange T4910/2A · 22,90 € la paire",price:0,st:"ok",dyn:"rim"},
+   {id:"j1",name:"Jantes blanches",meta:"Plastique moulé · 2 paires",ref:"Jantes buggy 1/10 blanches",price:45.80,st:"est",dyn:"rim"},
+   {id:"j2",name:"Jantes couleur alu",meta:"Plastique moulé, finition argent",ref:"Jantes buggy 1/10 argent",price:45.80,st:"est",dyn:"rim"},
+   {id:"j3",name:"Jantes bleues",meta:"Plastique moulé",ref:"Jantes buggy 1/10 bleues",price:45.80,st:"est",dyn:"rim"},
+   {id:"j4",name:"Jantes orange",meta:"Plastique moulé",ref:"Jantes buggy 1/10 orange",price:45.80,st:"est",dyn:"rim"},
+   {id:"j5",name:"Jantes chromées",meta:"Plastique chromé",ref:"Jantes buggy 1/10 chromées",price:49.90,st:"est",dyn:"rim"}
   ]},
  {id:"pneus", ic:"", title:"Pneus", hs:[64,60],
   desc:"Choisis tes pneus selon l'endroit où tu roules. Ils sont montés sur les jantes choisies.",
-  view:()=>({img:"car",c:[58,62],z:1.7,p:[64,60]}), spare:{label:"Jeux de pneus en plus",unit:"le jeu de 4",base:38.40},
+  view:()=>({img:"car",c:[58,62],z:1.7,p:[64,60]}), spare:{label:"Pneus en plus",what:"pneus",unit:"le jeu de 4",base:38.40},
   opts:[
    {id:"p0",name:"Tout-terrain à pointes",meta:"D'origine · terre, herbe",ref:"Rechange T4900/1A · 19,20 € la paire",price:0,st:"ok",dyn:"tire"},
    {id:"p1",name:"Tout-terrain block",meta:"Terre dure, gravier",ref:"Absima 2500059 (x4)",price:19.95,st:"ok",dyn:"tire"},
@@ -600,16 +608,17 @@ const POSTS = [
 
 /* ---------- état ---------- */
 let cfg = {paint:null, extra:{}}; POSTS.forEach(p=>cfg[p.id]=p.opts[0].id);
-try{ const s=JSON.parse(localStorage.getItem("psl5")||"null"); if(s) Object.assign(cfg,s); }catch(e){}
-const save=()=>{ try{localStorage.setItem("psl5",JSON.stringify(cfg));}catch(e){} };
+try{ const s=JSON.parse(localStorage.getItem("psl6")||"null"); if(s) Object.assign(cfg,s); }catch(e){}
+const save=()=>{ try{localStorage.setItem("psl6",JSON.stringify(cfg));}catch(e){} };
 const P = id => POSTS.find(p=>p.id===id);
 const sel = id => { const p=P(id); return p.opts.find(o=>o.id===cfg[id])||p.opts[0]; };
 const paint = () => PAINTS.find(p=>p.id===cfg.paint)||PAINTS[0];
 const painted = () => !!PAINTS.find(p=>p.id===cfg.paint);
 function validate(){ POSTS.forEach(p=>{ const o=sel(p.id); if(o.needs&&!o.needs(cfg)) cfg[p.id]=p.opts[0].id; }); }
 function extras(){ return cfg.moteur!=="m0" ? [{name:"Pignon moteur 15 dents brushless",ref:"T2M T4905/19G",price:5.90,st:"ok"}] : []; }
-function spareUnit(p){ const o=sel(p.id); return Math.max(o.price,p.spare.base); }
-function spares(){ return POSTS.filter(p=>p.spare&&(cfg.extra||{})[p.id]>0).map(p=>({n:`${p.spare.label.replace("Jeux","Jeu")} : ${sel(p.id).name}`,q:cfg.extra[p.id],u:spareUnit(p),ref:sel(p.id).ref,st:sel(p.id).st})); }
+function spareUnit(p,o){ o=o||sel(p.id); return o.price>0?o.price:p.spare.base; }
+function spareQ(p,o){ const x=(cfg.extra||{})[p.id]; return x&&typeof x==="object"?(x[o.id]||0):0; }
+function spares(){ const out=[]; POSTS.filter(p=>p.spare).forEach(p=>p.opts.forEach(o=>{ const q=spareQ(p,o); if(q>0) out.push({n:`Jeu de 4 en plus : ${o.name}`,q,u:spareUnit(p,o),ref:o.ref,st:o.st}); })); return out; }
 function total(){ let t=BASE.price+paint().price; spares().forEach(s=>t+=s.q*s.u); POSTS.forEach(p=>t+=sel(p.id).price); extras().forEach(e=>t+=e.price); return t; }
 function upgraded(){ return POSTS.filter(p=>cfg[p.id]!==p.opts[0].id).length + (paint().price?1:0); }
 
@@ -765,8 +774,8 @@ const ORDER=["moteur","batterie","chassis","platine","amortos","supports","trian
 POSTS.sort((a,b)=>ORDER.indexOf(a.id)-ORDER.indexOf(b.id));
 const STEPS=[...POSTS]; const TOTAL=STEPS.length+1;
 let nav={cur:0,max:0,done:false};
-try{ const s=JSON.parse(localStorage.getItem("psl5nav")||"null"); if(s) nav=Object.assign(nav,s); }catch(e){}
-const saveNav=()=>{ try{localStorage.setItem("psl5nav",JSON.stringify(nav));}catch(e){} };
+try{ const s=JSON.parse(localStorage.getItem("psl6nav")||"null"); if(s) nav=Object.assign(nav,s); }catch(e){}
+const saveNav=()=>{ try{localStorage.setItem("psl6nav",JSON.stringify(nav));}catch(e){} };
 
 /* ---------- peintures ---------- */
 function swatchSvg(hex){ return `<span class="swatch" style="background:radial-gradient(circle at 35% 30%,#fff8,transparent 50%),${hex}"></span>`; }
@@ -820,9 +829,12 @@ function buildDeck(){
   bindSwipe();
   go(nav.cur,false);
 }
-function renderSpare(p){ const el=document.getElementById("sp-"+p.id); if(!el) return; cfg.extra=cfg.extra||{}; const q=cfg.extra[p.id]||0, u=spareUnit(p);
-  el.innerHTML=`<div><b>${p.spare.label}</b><small>${sel(p.id).name} · ${fmt(u)} ${p.spare.unit}</small></div><div class="stp"><button type="button" aria-label="Retirer un jeu" ${q?"":"disabled"} data-d="-1">−</button><span class="mono" aria-live="polite">${q}</span><button type="button" aria-label="Ajouter un jeu" ${q>=4?"disabled":""} data-d="1">+</button></div><span class="mono sp-p">${q?"+ "+fmt(q*u):"—"}</span>`;
-  el.querySelectorAll("button").forEach(b=>b.onclick=()=>{ cfg.extra[p.id]=Math.max(0,Math.min(4,q+(+b.dataset.d))); save(); renderSpare(p); refresh(); fitVp(); });
+function renderSpare(p){ const el=document.getElementById("sp-"+p.id); if(!el) return; cfg.extra=cfg.extra||{}; if(typeof cfg.extra[p.id]!=="object") cfg.extra[p.id]={};
+  const X=cfg.extra[p.id], n=Object.values(X).reduce((a,b)=>a+b,0), sum=p.opts.reduce((a,o)=>a+spareQ(p,o)*spareUnit(p,o),0);
+  el.innerHTML=`<button class="sp-h" type="button" aria-expanded="${!!el.dataset.open}"><span><b>${p.spare.label}</b><small>Achète des jeux de rechange, du type que tu veux · ${p.spare.unit}</small></span><span class="mono sp-p">${n?n+" jeu"+(n>1?"x":"")+" · + "+fmt(sum):"Aucun"}</span></button>
+   <div class="sp-l" ${el.dataset.open?"":"hidden"}>${p.opts.map(o=>{ const q=spareQ(p,o); return `<div class="sp-r"><span class="thumb sm">${photo(o)}</span><span class="sp-n">${o.name}<small>${fmt(spareUnit(p,o))} ${p.spare.unit}</small></span><span class="stp"><button type="button" aria-label="Retirer un jeu ${o.name}" ${q?"":"disabled"} data-o="${o.id}" data-d="-1">−</button><span class="mono">${q}</span><button type="button" aria-label="Ajouter un jeu ${o.name}" ${q>=4?"disabled":""} data-o="${o.id}" data-d="1">+</button></span></div>`; }).join("")}</div>`;
+  el.querySelector(".sp-h").onclick=()=>{ if(el.dataset.open) delete el.dataset.open; else el.dataset.open="1"; renderSpare(p); fitVp(); };
+  el.querySelectorAll(".stp button").forEach(b=>b.onclick=()=>{ const id=b.dataset.o; X[id]=Math.max(0,Math.min(4,(X[id]||0)+(+b.dataset.d))); save(); renderSpare(p); refresh(); fitVp(); });
 }
 function renderOpts(p){
   const box=document.getElementById("op-"+p.id);
@@ -925,7 +937,15 @@ function renderRecap(){
 }
 document.getElementById("copy").onclick=async e=>{ const b=e.currentTarget; try{ await navigator.clipboard.writeText(code()); b.textContent="Copié"; }catch(err){ const r=document.createRange(); r.selectNodeContents(document.getElementById("code")); const s=getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent="Sélectionné"; } setTimeout(()=>b.textContent="Copier",1800); };
 document.getElementById("order").onclick=()=>{ document.getElementById("doneBox").innerHTML=`<div class="done-box"><b>Maquette.</b> Ici s'ouvrira le paiement en ligne de ${fmt(total())}. Aucun paiement n'est branché pour l'instant : rien n'a été commandé.</div>`; };
-document.getElementById("restart").onclick=()=>editStep(0);
+let rsT=0;
+document.getElementById("restart").onclick=e=>{ const b=e.currentTarget;
+  if(!b.dataset.arm){ b.dataset.arm="1"; b.textContent="Confirmer : tout effacer"; b.classList.add("danger"); clearTimeout(rsT); rsT=setTimeout(()=>{ delete b.dataset.arm; b.textContent="Recommencer depuis l'étape 1"; b.classList.remove("danger"); },4000); return; }
+  clearTimeout(rsT); delete b.dataset.arm; b.textContent="Recommencer depuis l'étape 1"; b.classList.remove("danger");
+  cfg={paint:null,extra:{}}; POSTS.forEach(p=>cfg[p.id]=p.opts[0].id); nav={cur:0,max:0,done:false}; save(); saveNav();
+  document.getElementById("doneBox").innerHTML="";
+  applyTheme(); renderPaints(); paintCar(); POSTS.forEach(p=>{ renderOpts(p); lastShown[p.id]=null; showFrame(p,sel(p.id),false); });
+  go(0,false); renderSteps(); updateNav(); window.dockUp&&window.dockUp();
+  document.getElementById("carrosserie").scrollIntoView({behavior:"smooth",block:"start"}); };
 
 /* ---------- rafraîchissement ---------- */
 let shownTot=null;
@@ -1005,8 +1025,8 @@ function startGL(){
 }
 
 /* ---------- performances ---------- */
-const WD={m1:40,m2:50,m3:55,b1:216,b2:265,b3:390,pb1:12,pb2:-8,c1:-25,f1:35,f2:50,f3:85,a1:40,s1:30,s2:-15,t1:20,t2:90,d1:5,j2:60,j3:60,j4:60,p1:-10,p2:20,p3:-30,p4:-40,h1:8};
-const RB={f1:8,f2:10,f3:16,a1:10,s1:8,s2:6,t1:6,t2:14,d1:4,h1:6,c1:4,c2:1,pb1:3,pb2:2,j2:3,j3:3,j4:3};
+const WD={m1:40,m2:50,m3:55,b1:216,b2:265,b3:390,pb1:12,pb2:-8,c1:-25,f1:35,f2:50,f3:85,a1:40,s1:30,s2:-15,t1:20,t2:90,d1:5,p1:-10,p2:20,p3:-30,p4:-40,h1:8};
+const RB={f1:8,f2:10,f3:16,a1:10,s1:8,s2:6,t1:6,t2:14,d1:4,h1:6,c1:4,c2:1,pb1:3,pb2:2};
 function perf(){
   let w=1880; Object.keys(WD).forEach(k=>{ if(Object.values(cfg).includes(k)) w+=WD[k]; });
   const mo=sel("moteur"), bat=cfg.batterie, s3=bat==="b3";
