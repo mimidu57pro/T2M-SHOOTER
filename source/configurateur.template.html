@@ -299,6 +299,20 @@ button{font:inherit;color:inherit}
  #op-paint .o-price{grid-column:auto;text-align:center;padding:0}
  #op-paint .opt.sel{box-shadow:inset 0 0 0 2px var(--acc)}
 }
+.sp-row{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x proximity;padding:2px 12px 6px;scrollbar-width:none;overscroll-behavior-x:contain}
+.sp-row::-webkit-scrollbar{display:none}
+.sp-c{flex:0 0 132px;scroll-snap-align:start;display:flex;flex-direction:column;gap:5px;padding:6px 6px 8px;border-radius:12px;border:1px solid var(--line);background:var(--panel)}
+.sp-c.on{border-color:var(--acc);background:linear-gradient(180deg,var(--acc-soft),var(--panel) 75%)}
+.sp-c .thumb{width:100%;height:auto;aspect-ratio:1;border-radius:8px}
+.sp-c .sp-n{font-size:12px;font-weight:600;line-height:1.25;min-height:2.5em}
+.sp-c .sp-u{font-size:11.5px;color:var(--muted)}
+.sp-c .stp{justify-content:space-between;gap:4px}
+.sp-c .stp button{width:34px;height:34px;font-size:18px}
+.sp-hint{margin:0 12px 10px;font-family:var(--f-cond);font-size:13.5px;color:var(--acc);display:flex;gap:6px;align-items:center}
+.sp-hint::after{content:"→";animation:nudge 1.6s ease-in-out infinite}
+@keyframes nudge{50%{transform:translateX(5px)}}
+.sp-h{cursor:default}
+@media (max-width:760px){.sp-c{flex-basis:30%}.sp-c .stp button{width:30px;height:30px}}
 /* ---------- deck de prépa ---------- */
 .deck{border:1px solid var(--line2);border-radius:28px;background:linear-gradient(180deg,var(--bg2),var(--bg));box-shadow:0 50px 120px -60px var(--acc-glow);overflow:hidden;overflow:clip;outline:none}
 .deck-top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:rgba(13,15,20,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
@@ -886,15 +900,21 @@ function buildDeck(){
   bindSwipe();
   go(nav.cur,false);
 }
+function spareSum(p){ return p.opts.reduce((a,o)=>a+spareQ(p,o)*spareUnit(p,o),0); }
+function updSpareHead(p){ const el=document.getElementById("sp-"+p.id); if(!el) return; const X=cfg.extra[p.id]||{}, n=Object.values(X).reduce((a,b)=>a+b,0); const h=el.querySelector(".sp-p"); if(h) h.textContent=n?`${n} jeu${n>1?"x":""} · + ${fmt(spareSum(p))}`:"Aucun"; }
 function renderSpare(p){ const el=document.getElementById("sp-"+p.id); if(!el) return; cfg.extra=cfg.extra||{}; if(typeof cfg.extra[p.id]!=="object") cfg.extra[p.id]={};
-  const X=cfg.extra[p.id], n=Object.values(X).reduce((a,b)=>a+b,0), sum=p.opts.reduce((a,o)=>a+spareQ(p,o)*spareUnit(p,o),0);
-  el.innerHTML=`<button class="sp-h" type="button" aria-expanded="${!!el.dataset.open}"><span><b>${p.spare.label}</b><small>Achète des jeux de rechange, du type que tu veux · ${p.spare.unit}</small></span><span class="mono sp-p">${n?n+" jeu"+(n>1?"x":"")+" · + "+fmt(sum):"Aucun"}</span></button>
-   <div class="sp-l" ${el.dataset.open?"":"hidden"}>${p.opts.map(o=>{ const q=spareQ(p,o); return `<div class="sp-r"><span class="thumb sm">${photo(o)}</span><span class="sp-n">${o.name}<small>${fmt(spareUnit(p,o))} ${p.spare.unit}</small></span><span class="stp"><button type="button" aria-label="Retirer un jeu ${o.name}" ${q?"":"disabled"} data-o="${o.id}" data-d="-1">−</button><span class="mono">${q}</span><button type="button" aria-label="Ajouter un jeu ${o.name}" ${q>=4?"disabled":""} data-o="${o.id}" data-d="1">+</button></span></div>`; }).join("")}</div>`;
-  el.querySelector(".sp-h").onclick=()=>{ if(el.dataset.open) delete el.dataset.open; else el.dataset.open="1"; renderSpare(p); fitVp(); };
-  el.querySelectorAll(".stp button").forEach(b=>b.onclick=()=>{ const id=b.dataset.o; X[id]=Math.max(0,Math.min(4,(X[id]||0)+(+b.dataset.d))); save(); renderSpare(p); refresh(); fitVp(); });
+  const X=cfg.extra[p.id];
+  el.innerHTML=`<div class="sp-h"><span><b>${p.spare.label}</b><small>Glisse et ajoute des jeux de 4, du type que tu veux</small></span><span class="mono sp-p"></span></div>
+   <div class="sp-row">${p.opts.map(o=>{ const q=spareQ(p,o); return `<div class="sp-c ${q?"on":""}" data-o="${o.id}"><span class="thumb">${photo(o)}</span><span class="sp-n">${o.short||o.name}</span><span class="sp-u mono">${fmt(spareUnit(p,o))}</span><span class="stp"><button type="button" aria-label="Retirer un jeu ${o.name}" ${q?"":"disabled"} data-d="-1">−</button><span class="mono q">${q}</span><button type="button" aria-label="Ajouter un jeu ${o.name}" ${q>=4?"disabled":""} data-d="1">+</button></span></div>`; }).join("")}</div>
+   <p class="sp-hint">Fais glisser pour voir toutes les ${p.spare.what}</p>`;
+  updSpareHead(p);
+  el.querySelectorAll(".sp-c").forEach(c=>{ const id=c.dataset.o; c.querySelectorAll("button").forEach(b=>b.onclick=()=>{ X[id]=Math.max(0,Math.min(4,(X[id]||0)+(+b.dataset.d))); save();
+    const q=X[id]; c.querySelector(".q").textContent=q; c.classList.toggle("on",q>0); c.querySelector('[data-d="-1"]').disabled=!q; c.querySelector('[data-d="1"]').disabled=q>=4; updSpareHead(p); refresh(); }); });
 }
 function shortName(o){ if(o.short) return o.short; if(o.id==="b0") return "Sans batterie"; if(o.m) return o.price?M[o.m]:M[o.m]+" · origine"; let n=o.name.replace(/^Combo /,""); if(n.length<=26) return n; const cut=n.slice(0,26); return cut.slice(0,cut.lastIndexOf(" "))+"…"; }
 function centerSel(box){ if(box.scrollWidth<=box.clientWidth+4) return; const s=box.querySelector(".opt.sel"); if(!s) return; const x=s.offsetLeft-(box.clientWidth-s.offsetWidth)/2; try{ box.scrollTo({left:x,behavior:"smooth"}); }catch(e){ box.scrollLeft=x; } }
+function markSel(p){ const box=document.getElementById("op-"+p.id); box.querySelectorAll(".opt").forEach(l=>{ const on=l.dataset.o===cfg[p.id]; l.classList.toggle("sel",on); const i=l.querySelector("input"); if(i) i.checked=on; });
+  const o=sel(p.id); document.getElementById("pk-"+p.id).innerHTML=`<span>Monté : <b>${o.name}</b></span><span class="mono">${o.price?"+ "+fmt(o.price):"inclus"}</span>`; updSpareHead(p); }
 function renderOpts(p){
   const box=document.getElementById("op-"+p.id); const keepX=box.scrollLeft;
   box.innerHTML=p.opts.map(o=>{ const dis=o.needs&&!o.needs(cfg), on=cfg[p.id]===o.id;
@@ -906,10 +926,10 @@ function renderOpts(p){
   box.querySelectorAll(".opt").forEach(l=>{
     const o=p.opts.find(x=>x.id===l.dataset.o);
     if(matchMedia("(hover:hover)").matches){ l.onmouseenter=()=>showFrame(p,o,true); l.onmouseleave=()=>showFrame(p,sel(p.id),true); }
-    l.querySelector("input").onchange=()=>{ cfg[p.id]=o.id; validate(); save(); POSTS.forEach(q=>{ if(q.id!==p.id&&(q.opts.some(x=>x.needs)||q.opts.some(x=>x.dyn)&&o.dyn)){ renderOpts(q); lastShown[q.id]=null; showFrame(q,sel(q.id),false); } }); renderOpts(p); showFrame(p,o,true); refresh(); };
+    l.querySelector("input").onchange=()=>{ cfg[p.id]=o.id; validate(); save(); POSTS.forEach(q=>{ if(q.id!==p.id&&(q.opts.some(x=>x.needs)||q.opts.some(x=>x.dyn)&&o.dyn)){ renderOpts(q); lastShown[q.id]=null; showFrame(q,sel(q.id),false); } }); markSel(p); showFrame(p,o,true); refresh(); };
     l.querySelector("input").onfocus=()=>showFrame(p,o,true);
   });
-  box.scrollLeft=keepX; centerSel(box);
+  box.scrollLeft=keepX;
   renderSpare(p);
   const o=sel(p.id);
   document.getElementById("pk-"+p.id).innerHTML=`<span>Monté : <b>${o.name}</b></span><span class="mono">${o.price?"+ "+fmt(o.price):"inclus"}</span>`;
@@ -945,7 +965,7 @@ document.getElementById("nextBtn").onclick=()=>{ if(nav.cur===STEPS.length-1){ n
 document.getElementById("deck").addEventListener("keydown",e=>{ if(e.target.closest("input"))return; if(e.key==="ArrowRight") document.getElementById("nextBtn").click(); if(e.key==="ArrowLeft") go(nav.cur-1); });
 function bindSwipe(){
   let sx=0,sy=0,act=false,moved=false;
-  vp.addEventListener("pointerdown",e=>{ if(e.pointerType==="mouse"||e.target.closest(".opts,.spare")) return; sx=e.clientX; sy=e.clientY; act=true; moved=false; },{passive:true});
+  vp.addEventListener("pointerdown",e=>{ if(e.pointerType==="mouse"||e.target.closest(".opts,.spare,.sp-row")) return; sx=e.clientX; sy=e.clientY; act=true; moved=false; },{passive:true});
   vp.addEventListener("pointermove",e=>{ if(!act) return; const dx=e.clientX-sx; if(Math.abs(dx)>12) moved=true; track.style.transition="none"; track.style.transform=`translateX(calc(${-nav.cur*100}% + ${Math.abs(dx)>Math.abs(e.clientY-sy)?dx*.5:0}px))`; },{passive:true});
   const end=e=>{ if(!act) return; act=false; track.style.transition=""; const dx=e.clientX-sx, dy=e.clientY-sy;
     if(Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)*1.4){ if(dx<0) document.getElementById("nextBtn").click(); else go(nav.cur-1); } else go(nav.cur,false); };
